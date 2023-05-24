@@ -1,19 +1,10 @@
 /*
- * tfa98xx.c   tfa98xx codec module
+ * Copyright (C) 2018 NXP Semiconductors, All Rights Reserved.
  *
- * Copyright 2014-2017 NXP Semiconductors
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #define pr_fmt(fmt) "%s(): " fmt, __func__
@@ -96,7 +87,7 @@ static int pcm_sample_format = 0;
 module_param(pcm_sample_format, int, S_IRUGO);
 MODULE_PARM_DESC(pcm_sample_format, "PCM sample format: 0=S16_LE, 1=S24_LE, 2=S32_LE\n");
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 static int pcm_no_constraint = 1;
 #else
 static int pcm_no_constraint = 0;
@@ -136,17 +127,17 @@ static inline char *tfa_cont_profile_name(struct tfa98xx *tfa98xx, int prof_idx)
 	return tfaContProfileName(tfa98xx->tfa->cnt, tfa98xx->tfa->dev_idx, prof_idx);
 }
 
-static enum Tfa98xx_Error tfa98xx_write_re25(struct tfa_device *tfa, int value)
+static enum tfa_error tfa98xx_write_re25(struct tfa_device *tfa, int value)
 {
-	enum Tfa98xx_Error err;
+	enum tfa_error err;
 
 	/* clear MTPEX */
 	err = tfa_dev_mtp_set(tfa, TFA_MTP_EX, 0);
-	if (err == Tfa98xx_Error_Ok) {
+	if (err == tfa_error_ok) {
 		/* set RE25 in shadow regiser */
 		err = tfa_dev_mtp_set(tfa, TFA_MTP_RE25_PRIM, value);
 	}
-	if (err == Tfa98xx_Error_Ok) {
+	if (err == tfa_error_ok) {
 		/* set MTPEX to copy RE25 into MTP  */
 		err = tfa_dev_mtp_set(tfa, TFA_MTP_EX, 2);
 	}
@@ -155,9 +146,9 @@ static enum Tfa98xx_Error tfa98xx_write_re25(struct tfa_device *tfa, int value)
 }
 
 /* Wrapper for tfa start */
-static enum Tfa98xx_Error tfa98xx_tfa_start(struct tfa98xx *tfa98xx, int next_profile, int vstep)
+static enum tfa_error tfa98xx_tfa_start(struct tfa98xx *tfa98xx, int next_profile, int vstep)
 {
-	enum Tfa98xx_Error err;
+	enum tfa_error err;
 	ktime_t start_time, stop_time;
 	u64 delta_time;
 
@@ -175,10 +166,10 @@ static enum Tfa98xx_Error tfa98xx_tfa_start(struct tfa98xx *tfa98xx, int next_pr
 		        next_profile, vstep, delta_time);
 	}
 
-	if ((err == Tfa98xx_Error_Ok) && (tfa98xx->set_mtp_cal)) {
-		enum Tfa98xx_Error err_cal;
+	if ((err == tfa_error_ok) && (tfa98xx->set_mtp_cal)) {
+		enum tfa_error err_cal;
 		err_cal = tfa98xx_write_re25(tfa98xx->tfa, tfa98xx->cal_data);
-		if (err_cal != Tfa98xx_Error_Ok) {
+		if (err_cal != tfa_error_ok) {
 			pr_err("Error, setting calibration value in mtp, err=%d\n", err_cal);
 		} else {
 			tfa98xx->set_mtp_cal = false;
@@ -363,7 +354,7 @@ static int tfa98xx_dbgfs_otc_set(void *data, u64 val)
 {
 	struct i2c_client *i2c = (struct i2c_client *)data;
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	enum Tfa98xx_Error err;
+	enum tfa_error err;
 
 	if (val != 0 && val != 1) {
 		pr_err("[0x%x] Unexpected value %llu\n", tfa98xx->i2c->addr, val);
@@ -374,7 +365,7 @@ static int tfa98xx_dbgfs_otc_set(void *data, u64 val)
 	err = tfa_dev_mtp_set(tfa98xx->tfa, TFA_MTP_OTC, val);
 	mutex_unlock(&tfa98xx->dsp_lock);
 
-	if (err != Tfa98xx_Error_Ok) {
+	if (err != tfa_error_ok) {
 		pr_err("[0x%x] Unable to check DSP access: %d\n", tfa98xx->i2c->addr, err);
 		return -EIO;
 	}
@@ -410,7 +401,7 @@ static int tfa98xx_dbgfs_mtpex_set(void *data, u64 val)
 {
 	struct i2c_client *i2c = (struct i2c_client *)data;
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	enum Tfa98xx_Error err;
+	enum tfa_error err;
 
 	if (val != 0) {
 		pr_err("[0x%x] Can only clear MTPEX (0 value expected)\n", tfa98xx->i2c->addr);
@@ -421,7 +412,7 @@ static int tfa98xx_dbgfs_mtpex_set(void *data, u64 val)
 	err = tfa_dev_mtp_set(tfa98xx->tfa, TFA_MTP_EX, val);
 	mutex_unlock(&tfa98xx->dsp_lock);
 
-	if (err != Tfa98xx_Error_Ok) {
+	if (err != tfa_error_ok) {
 		pr_err("[0x%x] Unable to check DSP access: %d\n", tfa98xx->i2c->addr, err);
 		return -EIO;
 	}
@@ -465,7 +456,7 @@ static ssize_t tfa98xx_dbgfs_start_set(struct file *file,
 {
 	struct i2c_client *i2c = file->private_data;
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	enum Tfa98xx_Error ret;
+	enum tfa_error ret;
 	char buf[32];
 	const char ref[] = "please calibrate now";
 	int buf_size;
@@ -485,9 +476,9 @@ static ssize_t tfa98xx_dbgfs_start_set(struct file *file,
 
 	mutex_lock(&tfa98xx->dsp_lock);
 	ret = tfa_calibrate(tfa98xx->tfa);
-	if (ret == Tfa98xx_Error_Ok)
+	if (ret == tfa_error_ok)
 		ret = tfa98xx_tfa_start(tfa98xx, tfa98xx->profile, tfa98xx->vstep);
-	if (ret == Tfa98xx_Error_Ok)
+	if (ret == tfa_error_ok)
 			tfa_dev_set_state(tfa98xx->tfa, TFA_STATE_UNMUTE);
 	mutex_unlock(&tfa98xx->dsp_lock);
 
@@ -615,7 +606,7 @@ static ssize_t tfa98xx_dbgfs_dsp_state_set(struct file *file,
 {
 	struct i2c_client *i2c = file->private_data;
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	enum Tfa98xx_Error ret;
+	enum tfa_error ret;
 	char buf[32];
 	const char start_cmd[] = "start";
 	const char stop_cmd[] = "stop";
@@ -685,11 +676,10 @@ static ssize_t tfa98xx_dbgfs_fw_state_get(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, str, strlen(str));
 }
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_BROKEN) && defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 extern int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead);
 #endif
 
-#ifdef CONFIG_SND_SOC_TFA9874
 static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 				     char __user *user_buf, size_t count,
 				     loff_t *ppos)
@@ -698,42 +688,7 @@ static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
 	int ret = 0;
 	uint8_t *buffer;
-
-	buffer = kmalloc(count, GFP_KERNEL);
-	if (buffer == NULL) {
-		pr_err("[0x%x] can not allocate memory\n", i2c->addr);
-		return -ENOMEM;
-	}
-
-	mutex_lock(&tfa98xx->dsp_lock);
-	/* huaqin add for ZQL1820p1-24 by xudayi at 2018/10/31 start */
-	//ret = send_tfa_cal_apr(buffer, count, true);
-	/* huaqin add for ZQL1820p1-24 by xudayi at 2018/10/31 end */
-
-	mutex_unlock(&tfa98xx->dsp_lock);
-	if (ret) {
-		pr_err("[0x%x] dsp_msg_read error: %d\n", i2c->addr, ret);
-		kfree(buffer);
-		return -EFAULT;
-	}
-
-	ret = copy_to_user(user_buf, buffer, count);
-	kfree(buffer);
-	if (ret)
-		return -EFAULT;
-
-	*ppos += count;
-	return count;
-}
-#else
-static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
-				     char __user *user_buf, size_t count,
-				     loff_t *ppos)
-{
-	struct i2c_client *i2c = file->private_data;
-	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	int ret = 0;
-	uint8_t *buffer;
+#if !defined(CONFIG_SND_SOC_TFA9874) && !defined(CONFIG_MACH_ASUS_SDM660)
 	enum Tfa98xx_Error error;
 
 	if (tfa98xx->tfa == NULL) {
@@ -743,18 +698,32 @@ static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 
 	if (count == 0)
 		return 0;
+#endif
 
 	buffer = kmalloc(count, GFP_KERNEL);
 	if (buffer == NULL) {
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+		pr_err("[0x%x] can not allocate memory\n", i2c->addr);
+#else
 		pr_debug("[0x%x] can not allocate memory\n", tfa98xx->i2c->addr);
+#endif
 		return -ENOMEM;
 	}
 
 	mutex_lock(&tfa98xx->dsp_lock);
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+	ret = copy_to_user(user_buf, buffer, count);
+#else
 	error = dsp_msg_read(tfa98xx->tfa, count, buffer);
+#endif
 	mutex_unlock(&tfa98xx->dsp_lock);
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+	if (ret) {
+		pr_err("[0x%x] dsp_msg_read error: %d\n", i2c->addr, ret);
+#else
 	if (error != Tfa98xx_Error_Ok) {
 		pr_debug("[0x%x] dsp_msg_read error: %d\n", tfa98xx->i2c->addr, error);
+#endif
 		kfree(buffer);
 		return -EFAULT;
 	}
@@ -767,81 +736,64 @@ static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 	*ppos += count;
 	return count;
 }
-#endif
 
-#ifdef CONFIG_SND_SOC_TFA9874
 static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
 				     const char __user *user_buf,
 				     size_t count, loff_t *ppos)
 {
 	struct i2c_client *i2c = file->private_data;
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 	uint8_t *buffer;
+#else
+	nxpTfaFileDsc_t *msg_file;
+	enum Tfa98xx_Error error;
+#endif
 	int err = 0;
+
+#if !defined(CONFIG_SND_SOC_TFA9874) && !defined(CONFIG_MACH_ASUS_SDM660)
+	if (tfa98xx->tfa == NULL) {
+		pr_debug("[0x%x] dsp is not available\n", tfa98xx->i2c->addr);
+		return -ENODEV;
+	}
+#endif
 
 	if (count == 0)
 		return 0;
 
 	/* msg_file.name is not used */
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 	buffer = kmalloc(count, GFP_KERNEL);
 	if ( buffer == NULL ) {
 		pr_err("[0x%x] can not allocate memory\n", i2c->addr);
-		return  -ENOMEM;
-	}
-	if (copy_from_user(buffer, user_buf, count))
-		return -EFAULT;
-
-	mutex_lock(&tfa98xx->dsp_lock);
-
-	/* huaqin add for ZQL1820p1-24 by xudayi at 2018/10/31 start */
-	//err = send_tfa_cal_apr(buffer, count, false);
-	/* huaqin add for ZQL1820p1-24 by xudayi at 2018/10/31 end */
-
-	if (err) {
-		pr_err("[0x%x] dsp_msg error: %d\n", i2c->addr, err);
-	}
-
-	mdelay(2);
-
-	mutex_unlock(&tfa98xx->dsp_lock);
-
-	kfree(buffer);
-
-	if (err)
-		return err;
-	return count;
-}
 #else
-static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
-				     const char __user *user_buf,
-				     size_t count, loff_t *ppos)
-{
-	struct i2c_client *i2c = file->private_data;
-	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
-	nxpTfaFileDsc_t *msg_file;
-	enum Tfa98xx_Error error;
-	int err = 0;
-
-	if (tfa98xx->tfa == NULL) {
-		pr_debug("[0x%x] dsp is not available\n", tfa98xx->i2c->addr);
-		return -ENODEV;
-	}
-
-	if (count == 0)
-		return 0;
-
-	/* msg_file.name is not used */
 	msg_file = kmalloc(count + sizeof(nxpTfaFileDsc_t), GFP_KERNEL);
 	if ( msg_file == NULL ) {
 		pr_debug("[0x%x] can not allocate memory\n", tfa98xx->i2c->addr);
+#endif
 		return  -ENOMEM;
 	}
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+
+	if (copy_from_user(buffer, user_buf, count))
+#else
 	msg_file->size = count;
 
 	if (copy_from_user(msg_file->data, user_buf, count))
+#endif
 		return -EFAULT;
 
 	mutex_lock(&tfa98xx->dsp_lock);
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+#ifdef CONFIG_BROKEN
+
+	err = send_tfa_cal_apr(buffer, count, false);
+	if (err)
+		pr_err("[0x%x] dsp_msg error: %d\n", i2c->addr, err);
+
+	mdelay(2);
+#endif
+#else
 	if ((msg_file->data[0] == 'M') && (msg_file->data[1] == 'G')) {
 		error = tfaContWriteFile(tfa98xx->tfa, msg_file, 0, 0); /* int vstep_idx, int vstep_msg_idx both 0 */
 		if (error != Tfa98xx_Error_Ok) {
@@ -855,15 +807,19 @@ static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
 			err = -EIO;
 		}
 	}
+#endif
 	mutex_unlock(&tfa98xx->dsp_lock);
 
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
+	kfree(buffer);
+#else
 	kfree(msg_file);
+#endif
 
 	if (err)
 		return err;
 	return count;
 }
-#endif
 /* -- RPC */
 
 static int tfa98xx_dbgfs_pga_gain_get(void *data, u64 *val)
@@ -1428,14 +1384,14 @@ static int tfa98xx_set_cal_ctl(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&tfa98xx_mutex);
 	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
-		enum Tfa98xx_Error err;
+		enum tfa_error err;
 		int i = tfa98xx->tfa->dev_idx;
 
 		tfa98xx->cal_data = (uint16_t)ucontrol->value.integer.value[i];
 
 		mutex_lock(&tfa98xx->dsp_lock);
 		err = tfa98xx_write_re25(tfa98xx->tfa, tfa98xx->cal_data);
-		tfa98xx->set_mtp_cal = (err != Tfa98xx_Error_Ok);
+		tfa98xx->set_mtp_cal = (err != tfa_error_ok);
 		if (tfa98xx->set_mtp_cal == false) {
 			pr_info("Calibration value (%d) set in mtp\n",
 			        tfa98xx->cal_data);
@@ -1463,7 +1419,7 @@ static int tfa98xx_get_cal_ctl(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 #define CHIP_SELECTOR_STEREO	(0)
 #define CHIP_SELECTOR_LEFT	(1)
 #define CHIP_SELECTOR_RIGHT	(2)
@@ -1473,17 +1429,18 @@ static int tfa98xx_get_cal_ctl(struct snd_kcontrol *kcontrol,
 #define CHIP_RCV_ADDR		(0x34)
 
 static int tfa98xx_info_stereo_ctl(struct snd_kcontrol *kcontrol,
-                                struct snd_ctl_elem_info *uinfo)
+					struct snd_ctl_elem_info *uinfo)
 {
-        uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-        uinfo->count = 1;
-        uinfo->value.integer.min = 0;
-        uinfo->value.integer.max = 3;
-        return 0;
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 3;
+
+	return 0;
 }
 
 static int tfa98xx_set_stereo_ctl(struct snd_kcontrol *kcontrol,
-                               struct snd_ctl_elem_value *ucontrol)
+					struct snd_ctl_elem_value *ucontrol)
 {
 	struct tfa98xx *tfa98xx;
 	int selector;
@@ -1492,30 +1449,24 @@ static int tfa98xx_set_stereo_ctl(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&tfa98xx_mutex);
 	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
-
 		if (selector == CHIP_SELECTOR_LEFT) {
 			if (tfa98xx->i2c->addr == CHIP_LEFT_ADDR)
 				tfa98xx->flags |= TFA98XX_FLAG_CHIP_SELECTED;
 			else
 				tfa98xx->flags &= ~TFA98XX_FLAG_CHIP_SELECTED;
-		}
-		else if (selector == CHIP_SELECTOR_RIGHT) {
+		} else if (selector == CHIP_SELECTOR_RIGHT) {
 			if (tfa98xx->i2c->addr == CHIP_RIGHT_ADDR)
 				tfa98xx->flags |= TFA98XX_FLAG_CHIP_SELECTED;
 			else
 				tfa98xx->flags &= ~TFA98XX_FLAG_CHIP_SELECTED;
-		}
-		else if (selector == CHIP_SELECTOR_RCV) {
+		} else if (selector == CHIP_SELECTOR_RCV) {
 			if (tfa98xx->i2c->addr == CHIP_RCV_ADDR) {
 				tfa98xx->flags |= TFA98XX_FLAG_CHIP_SELECTED;
 				tfa98xx->profile = 1;
-			}
-			else
+			} else
 				tfa98xx->flags &= ~TFA98XX_FLAG_CHIP_SELECTED;
-		}
-		else {
+		} else
 			tfa98xx->flags |= TFA98XX_FLAG_CHIP_SELECTED;
-		}
 	}
 	mutex_unlock(&tfa98xx_mutex);
 
@@ -1523,7 +1474,7 @@ static int tfa98xx_set_stereo_ctl(struct snd_kcontrol *kcontrol,
 }
 
 static int tfa98xx_get_stereo_ctl(struct snd_kcontrol *kcontrol,
-                               struct snd_ctl_elem_value *ucontrol)
+					struct snd_ctl_elem_value *ucontrol)
 {
 	struct tfa98xx *tfa98xx;
 
@@ -1535,9 +1486,7 @@ static int tfa98xx_get_stereo_ctl(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-
-#endif
-
+#endif /* CONFIG_SND_SOC_TFA9874 && CONFIG_MACH_ASUS_X00TD */
 
 static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 {
@@ -1552,9 +1501,11 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 	 *  - Stop control on TFA1 devices
 	 */
 
-	/* Huaqin add for prevent alloc memory overflow start */
+#ifdef CONFIG_MACH_ASUS_SDM660
 	nr_controls = 4; /* Profile and stop control */
-	/* Huaqin add for prevent alloc memory overflow end */
+#else
+	nr_controls = 2; /* Profile and stop control */
+#endif
 
 	if (tfa98xx->flags & TFA98XX_FLAG_CALIBRATION_CTL)
 		nr_controls += 1; /* calibration */
@@ -1665,7 +1616,7 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 		mix_index++;
 	}
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
         tfa98xx_controls[mix_index].name = "TFA_CHIP_SELECTOR";
         tfa98xx_controls[mix_index].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
         tfa98xx_controls[mix_index].info = tfa98xx_info_stereo_ctl;
@@ -2379,7 +2330,9 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 		return;
 	}
 
+#ifdef CONFIG_MACH_ASUS_SDM660
 	mutex_lock(&tfa98xx_mutex);
+#endif
 	mutex_lock(&tfa98xx->dsp_lock);
 
 	tfa98xx->dsp_init = TFA98XX_DSP_INIT_PENDING;
@@ -2400,13 +2353,18 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 					ret, tfa98xx->init_count);
 			reschedule = true;
 		} else {
+#ifndef CONFIG_MACH_ASUS_SDM660
+			mutex_lock(&tfa98xx_mutex);
+#endif
 			if (tfa98xx_sync_count < tfa98xx_device_count)
 				tfa98xx_sync_count++;
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 			sync = false; /* set false to avoid sync */
 #else
-			sync = true;
+			mutex_unlock(&tfa98xx_mutex);
+			sync = true;			
 #endif
+
 			/* Subsystem ready, tfa init complete */
 			tfa98xx->dsp_init = TFA98XX_DSP_INIT_DONE;
 			dev_dbg(&tfa98xx->i2c->dev,
@@ -2437,7 +2395,9 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 		tfa98xx->init_count = 0;
 	}
 	mutex_unlock(&tfa98xx->dsp_lock);
+#ifdef CONFIG_MACH_ASUS_SDM660
 	mutex_unlock(&tfa98xx_mutex);
+#endif
 
 	if (sync) {
 		/* check if all devices have started */
@@ -2691,7 +2651,7 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 extern int send_tfa_cal_in_band(void *buf, int cmd_size);
 
 static uint8_t bytes[3*3+1] = {0};
@@ -2701,33 +2661,12 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(struct tfa98xx *tfa98xx)
 	int ret = 0;
 	struct tfa_device *tfa = tfa98xx->tfa;
 	int value = 0, nr, dsp_cal_value = 0;
-/* Huaqin add for optimize nxp pa cal by xudayi at 2018/03/06 start */
-#if 0
-	/* If calibration is set to once we load from MTP, else send zero's */
-	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == 0x34)
-	{
+
+	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == 0x35) {
 		value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
 		dsp_cal_value = (value * 65536) / 1000;
-
 		nr = 4;
-		/* We have to copy it for both channels. Even when mono! */
-		bytes[nr++] = (uint8_t)((dsp_cal_value >> 16) & 0xff);
-		bytes[nr++] = (uint8_t)((dsp_cal_value >> 8) & 0xff);
-		bytes[nr++] = (uint8_t)(dsp_cal_value & 0xff);
 
-		dev_err(&tfa98xx->i2c->dev, "%s: cal value 0x%x\n", __func__, dsp_cal_value);
-
-		/* Receiver RDC */
-		if (value > 20000)
-			bytes[0] |= 0x01;
-	}
-#endif
-	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == 0x35)
-	{
-		value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
-		dsp_cal_value = (value * 65536) / 1000;
-
-		nr = 4;
 		/* We have to copy it for both channels. Even when mono! */
 		bytes[nr++] = (uint8_t)((dsp_cal_value >> 16) & 0xff);
 		bytes[nr++] = (uint8_t)((dsp_cal_value >> 8) & 0xff);
@@ -2737,22 +2676,22 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(struct tfa98xx *tfa98xx)
 		bytes[nr++] = bytes[5];
 		bytes[nr++] = bytes[6];
 
-		dev_err(&tfa98xx->i2c->dev, "%s: cal value 0x%x\n", __func__, dsp_cal_value);
+		dev_dbg(&tfa98xx->i2c->dev, "%s: cal value 0x%x\n", __func__,
+			dsp_cal_value);
 
 		/* Speaker RDC */
 		if (value > 4000)
 			bytes[0] |= 0x11;
 	}
-/* Huaqin add for optimize nxp pa cal by xudayi at 2018/03/06 end */
 
-	if (bytes[0] == 0x11)
-	{
+	if (bytes[0] == 0x11) {
 		nr = 1;
 		bytes[nr++] = 0x00;
 		bytes[nr++] = 0x81;
 		bytes[nr++] = 0x05;
 
-		dev_err(&tfa98xx->i2c->dev, "%s: send_tfa_cal_in_band \n", __func__);
+		dev_dbg(&tfa98xx->i2c->dev, "%s: send_tfa_cal_in_band\n",
+			__func__);
 
 		ret = send_tfa_cal_in_band(&bytes[1], sizeof(bytes) - 1);
 
@@ -2761,8 +2700,7 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(struct tfa98xx *tfa98xx)
 
 	return ret;
 }
-
-#endif
+#endif /* CONFIG_SND_SOC_TFA9874 && CONFIG_MACH_ASUS_X00TD */
 
 static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 {
@@ -2802,30 +2740,33 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		mutex_unlock(&tfa98xx->dsp_lock);
 	} else {
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
-#ifdef CONFIG_SND_SOC_TFA9874
-/* Huaqin add for optimize nxp pop noise by xudayi at 2018/04/16 start */
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 		{
+#endif
 			tfa98xx->pstream = 1;
+
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
 			/* Start DSP */
 			if ((tfa98xx->flags & TFA98XX_FLAG_CHIP_SELECTED) &&
-					(tfa98xx->dsp_init != TFA98XX_DSP_INIT_PENDING))
-				queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->init_work, 0);
+				(tfa98xx->dsp_init != TFA98XX_DSP_INIT_PENDING))
+				queue_delayed_work(tfa98xx->tfa98xx_wq,
+							&tfa98xx->init_work, 0);
+
 			tfa98xx_adsp_send_calib_values(tfa98xx);
-		}else {
-			tfa98xx->cstream = 1;
 		}
-/* Huaqin add for optimize nxp pop noise by xudayi at 2018/04/16 end */
-#else
-		tfa98xx->pstream = 1;
+#endif
 		else
 			tfa98xx->cstream = 1;
 
+#ifndef CONFIG_SND_SOC_TFA9874
+#ifdef CONFIG_MACH_ASUS_SDM660
 		switch(tfa98xx_controls)
+#endif
 
-			/* Start DSP */
-			if (tfa98xx->dsp_init != TFA98XX_DSP_INIT_PENDING)
-				queue_delayed_work(tfa98xx->tfa98xx_wq,
-						&tfa98xx->init_work, 0);
+		/* Start DSP */
+		if (tfa98xx->dsp_init != TFA98XX_DSP_INIT_PENDING)
+			queue_delayed_work(tfa98xx->tfa98xx_wq,
+			                   &tfa98xx->init_work, 0);
 #endif
 	}
 
@@ -3270,7 +3211,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 		}
 	}
 
-#ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_SND_SOC_TFA9874) && defined(CONFIG_MACH_ASUS_SDM660)
         tfa98xx->flags |= TFA98XX_FLAG_CHIP_SELECTED;
 #endif
 

@@ -1,20 +1,12 @@
 /*
- * Copyright 2014-2017 NXP Semiconductors
+ * Copyright (C) 2018 NXP Semiconductors, All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
-#include "dbgprint.h"
 #include "tfa_container.h"
 #include "tfa.h"
 #include "tfa98xx_tfafieldnames.h"
@@ -893,11 +885,6 @@ enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa,  nxpTfaBitfield_t
         
 	value=bf.value;
 	bfUni.field = bf.field;
-#ifdef TFA_DEBUG
-	if (tfa->verbose)
-		pr_debug("bitfield: %s=0x%x (0x%x[%d..%d]=0x%x)\n", tfaContBfName(bfUni.field, tfa->rev), value,
-			bfUni.Enum.address, bfUni.Enum.pos, bfUni.Enum.pos+bfUni.Enum.len, value);
-#endif
         error = tfa_set_bf(tfa, bfUni.field, value);
 
 	return error;
@@ -1012,19 +999,6 @@ static enum Tfa98xx_Error tfaRunWriteFilter(struct tfa_device *tfa, nxpTfaContBi
 		}
 	}
 
-#ifdef TFA_DEBUG
-	if (tfa->verbose) {
-		if (bq->aa.index==13) {
-			pr_debug("=%d,%.0f,%.2f \n",
-				bq->in.type, bq->in.cutOffFreq, bq->in.leakage);
-		} else if(bq->aa.index >= 10 && bq->aa.index <= 12) {
-			pr_debug("=%d,%.0f,%.1f,%.1f \n", bq->aa.type,
-				bq->aa.cutOffFreq, bq->aa.rippleDb, bq->aa.rolloff);
-		} else {
-			pr_debug("= unsupported filter index \n");
-		}
-	}
-#endif
 
 	/* Because we can load the same filters multiple times
 	 * For example: When we switch profile we re-write in operating mode.

@@ -1,19 +1,11 @@
 /*
- * Copyright 2014-2017 NXP Semiconductors
+ * Copyright (C) 2018 NXP Semiconductors, All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
-
 
 /**\file
  *
@@ -183,9 +175,9 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa);
  *  @param tfa struct = pointer to context of this device instance
  *  @param profile the selected profile to run
  *  @param vstep the selected vstep to use
- *  @return Tfa98xx_Error enum
+ *  @return tfa_error enum
  */
-enum Tfa98xx_Error tfa_dev_start(struct tfa_device *tfa, int profile, int vstep);
+enum tfa_error tfa_dev_start(struct tfa_device *tfa, int profile, int vstep);
 
 
 /**
@@ -197,9 +189,9 @@ enum Tfa98xx_Error tfa_dev_start(struct tfa_device *tfa, int profile, int vstep)
  * Note that this call will change state of the tfa to mute and powered down.
  *
  *  @param tfa struct = pointer to context of this device instance
- *  @return Tfa98xx_Error enum
+ *  @return tfa_error enum
  */
-enum Tfa98xx_Error tfa_dev_stop(struct tfa_device *tfa);
+enum tfa_error tfa_dev_stop(struct tfa_device *tfa);
 
 /**
  * This interface allows a device/type independent fine grained control of the
@@ -218,9 +210,9 @@ enum Tfa98xx_Error tfa_dev_stop(struct tfa_device *tfa);
  *
  *  @param tfa struct = pointer to context of this device instance
  *  @param state struct = desired device state after function return
- *  @return Tfa98xx_Error enum
+ *  @return tfa_error enum
  */
-enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state);
+enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state);
 
 /**
  * Retrieve the current state of this instance in an active way.
@@ -230,7 +222,7 @@ enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state stat
  * field should be treated as volatile.
  *
  *  @param tfa struct = pointer to context of this device instance
- *  @return Tfa98xx_Error enum
+ *  @return tfa_error enum
  *
  */
 enum tfa_state tfa_dev_get_state(struct tfa_device *tfa);
@@ -258,7 +250,7 @@ int tfa_dev_mtp_get(struct tfa_device *tfa, enum tfa_mtp item);
 /**
  *
  */
-enum Tfa98xx_Error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int value);
+enum tfa_error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int value);
 
 
 //irq

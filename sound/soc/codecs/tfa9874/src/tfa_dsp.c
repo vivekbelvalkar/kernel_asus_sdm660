@@ -1,20 +1,12 @@
 /*
- * Copyright 2014-2017 NXP Semiconductors
+ * Copyright (C) 2018 NXP Semiconductors, All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
-#include "dbgprint.h"
 #include "tfa_container.h"
 #include "tfa.h"
 #include "tfa98xx_tfafieldnames.h"
@@ -2938,7 +2930,7 @@ enum Tfa98xx_Error tfaRunWaitCalibration(struct tfa_device *tfa, int *calibrateD
  * tfa_dev_start will only do the basics: Going from powerdown to operating or a profile switch.
  * for calibrating or akoustic shock handling use the tfa98xxCalibration function.
  */
-enum Tfa98xx_Error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep)
+enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	int active_profile = -1;
@@ -3024,7 +3016,7 @@ error_exit:
 	return err;
 }
 
-enum Tfa98xx_Error tfa_dev_stop(struct tfa_device *tfa)
+enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 
@@ -3469,7 +3461,7 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa)
 
 	/* read revid via low level hal, register 3 */
 	if (tfa98xx_read_register16(tfa, 3, &rev) != Tfa98xx_Error_Ok) {
-		PRINT("\nError: Unable to read revid from slave:0x%02x \n", slave);
+		pr_err("Error: Unable to read revid from slave:0x%02x\n", slave);
 		return -1;
 	}
 
@@ -3485,9 +3477,9 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa)
 	return 0;
 }
 
-enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
+enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	enum tfa_error err = tfa_error_ok;
 	int loop = 50, ready = 0;
 	int count;
 
@@ -3512,7 +3504,7 @@ enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state stat
 		/* Make sure the DSP is running! */
 		do {
 			err = tfa98xx_dsp_system_stable(tfa, &ready);
-			if (err != Tfa98xx_Error_Ok)
+			if (err != tfa_error_ok)
 				return err;
 			if (ready)
 				break;
@@ -3534,6 +3526,7 @@ enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state stat
 #else
 		TFA_SET_BF(tfa, SBSL, 1);	/* Coming from state 6 */
 #endif
+
 									/*
 									* Disable MTP clock to protect memory.
 									* However in case of calibration wait for DSP! (This should be case only during calibration).
@@ -3575,7 +3568,7 @@ enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state stat
 		break;
 	default:
 		if (state & 0x0f)
-			return Tfa98xx_Error_Bad_Parameter;
+			return tfa_error_bad_param;
 	}
 
 	/* state modifiers */
@@ -3588,7 +3581,7 @@ enum Tfa98xx_Error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state stat
 
 	tfa->state = state;
 
-	return Tfa98xx_Error_Ok;
+	return tfa_error_ok;
 }
 
 enum tfa_state tfa_dev_get_state(struct tfa_device *tfa)
@@ -3660,9 +3653,9 @@ int tfa_dev_mtp_get(struct tfa_device *tfa, enum tfa_mtp item)
 	return value;
 }
 
-enum Tfa98xx_Error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int value)
+enum tfa_error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int value)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	enum tfa_error err = tfa_error_ok;
 
 	switch (item) {
 		case TFA_MTP_OTC:
@@ -3685,7 +3678,7 @@ enum Tfa98xx_Error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, in
 				TFA_SET_BF(tfa, R25CR, (uint16_t)value);
 			} else {
 				pr_debug("Error: Current device has no secondary Re25 channel \n");
-				err = Tfa98xx_Error_Bad_Parameter;
+				err = tfa_error_bad_param;
 			}
 			break;
 		case TFA_MTP_LOCK:
